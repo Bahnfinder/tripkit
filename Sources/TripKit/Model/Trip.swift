@@ -22,7 +22,7 @@ public class Trip: NSObject, NSSecureCoding {
     /// The arrival location.
     public let to: Location
     /// List of legs. Each leg represents a partial, direct trip between two locations.
-    public let legs: [Leg]
+    public var legs: [Leg]
     /// List of fares for this trip. Fares for a whole day or month are excluded here.
     public let fares: [Fare]
     /// Context for refreshing the trip. See `NetworkProvider.refreshTrip`
