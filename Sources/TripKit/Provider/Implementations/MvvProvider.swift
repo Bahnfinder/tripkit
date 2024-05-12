@@ -55,7 +55,10 @@ public class MvvProvider: AbstractEfaWebProvider {
             "UU5": LineStyle(shape: .rect, backgroundColor: LineStyle.parseColor("#bc7a00"), foregroundColor: LineStyle.white),
             "UU6": LineStyle(shape: .rect, backgroundColor: LineStyle.parseColor("#0065ae"), foregroundColor: LineStyle.white),
             "UU7": LineStyle(shape: .rect, backgroundColor: LineStyle.parseColor("#52822f"), backgroundColor2: LineStyle.parseColor("#c20831"), foregroundColor: LineStyle.white, borderColor: 0),
-            "UU8": LineStyle(shape: .rect, backgroundColor: LineStyle.parseColor("#c20831"), backgroundColor2: LineStyle.parseColor("#ec6726"), foregroundColor: LineStyle.white, borderColor: 0)
+            "UU8": LineStyle(shape: .rect, backgroundColor: LineStyle.parseColor("#c20831"), backgroundColor2: LineStyle.parseColor("#ec6726"), foregroundColor: LineStyle.white, borderColor: 0),
+            
+            "SEV": LineStyle(shape: .rounded, backgroundColor: LineStyle.parseColor("#FF0000"), foregroundColor: LineStyle.white),
+
         ]
     }
     
