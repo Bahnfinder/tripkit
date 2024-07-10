@@ -195,11 +195,7 @@ public class AbstractNetworkProvider: NetworkProvider {
                     return LineStyle(shape: .rect, backgroundColor: LineStyle.white, backgroundColor2: 0, foregroundColor: LineStyle.red, borderColor: LineStyle.red)
                 }
             case .regionalTrain:
-                if #available(iOS 13.0, *) {
-                    return LineStyle(shape: .rect, backgroundColor: LineStyle.parseColor(UIColor.systemIndigo.toHexString()), backgroundColor2: 0, foregroundColor: LineStyle.white, borderColor: 0)
-                } else {
-                    return LineStyle(shape: .rect, backgroundColor: LineStyle.gray, backgroundColor2: 0, foregroundColor: LineStyle.white, borderColor: 0)
-                }
+                return LineStyle(shape: .rect, backgroundColor: LineStyle.parseColor("#36397F"), backgroundColor2: 0, foregroundColor: LineStyle.white, borderColor: 0)
             case .suburbanTrain:
                 return LineStyle(shape: .circle, backgroundColor: LineStyle.parseColor("#006e34"), backgroundColor2: 0, foregroundColor: LineStyle.white, borderColor: 0)
             case .subway:
@@ -211,7 +207,7 @@ public class AbstractNetworkProvider: NetworkProvider {
                     // Flixmobility
                     return LineStyle(shape: .rounded, backgroundColor: LineStyle.parseColor("#6fd000"), backgroundColor2: 0, foregroundColor: LineStyle.white, borderColor: 0)
                 } else {
-                    return LineStyle(shape: .rounded, backgroundColor: LineStyle.parseColor("#993399"), backgroundColor2: 0, foregroundColor: LineStyle.white, borderColor: 0)
+                    return LineStyle(shape: .rounded, backgroundColor: LineStyle.parseColor("#005262"), backgroundColor2: 0, foregroundColor: LineStyle.white, borderColor: 0)
                 }
             case .ferry:
                 return LineStyle(shape: .circle, backgroundColor: LineStyle.blue, backgroundColor2: 0, foregroundColor: LineStyle.white, borderColor: 0)
