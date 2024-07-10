@@ -1368,30 +1368,30 @@ public class AbstractHafasClientInterfaceProvider: AbstractHafasProvider {
     func hideFare(_ fare: Fare) -> Bool {
         let fareNameLc = fare.name?.lowercased() ?? ""
         switch fareNameLc {
-        case let name where name.contains("tageskarte"): return true
-        case let name where name.contains("tagesticket"): return true
-        case let name where name.contains("monatskarte"): return true
-        case let name where name.contains("monatsticket"): return true
-        case let name where name.contains("jahreskarte"): return true
-        case let name where name.contains("jahresticket"): return true
-        case let name where name.contains("netzkarte"): return true
-        case let name where name.contains("abo"): return true
-        case let name where name.contains("2er"): return true
-        case let name where name.contains("3er"): return true
-        case let name where name.contains("4er"): return true
-        case let name where name.contains("5er"): return true
-        case let name where name.contains("6er"): return true
-        case let name where name.contains("2 personen"): return true
-        case let name where name.contains("3 personen"): return true
-        case let name where name.contains("4 personen"): return true
-        case let name where name.contains("5 personen"): return true
-        case let name where name.contains("6 personen"): return true
-        case let name where name.contains("2 adults"): return true
-        case let name where name.contains("3 adults"): return true
-        case let name where name.contains("4 adults"): return true
-        case let name where name.contains("5 adults"): return true
-        case let name where name.contains("6 adults"): return true
-        case let name where name.contains("deutschland-ticket"): return true
+        case let name where name.contains("tageskarte"): return false
+        case let name where name.contains("tagesticket"): return false
+        case let name where name.contains("monatskarte"): return false
+        case let name where name.contains("monatsticket"): return false
+        case let name where name.contains("jahreskarte"): return false
+        case let name where name.contains("jahresticket"): return false
+        case let name where name.contains("netzkarte"): return false
+        case let name where name.contains("abo"): return false
+        case let name where name.contains("2er"): return false
+        case let name where name.contains("3er"): return false
+        case let name where name.contains("4er"): return false
+        case let name where name.contains("5er"): return false
+        case let name where name.contains("6er"): return false
+        case let name where name.contains("2 personen"): return false
+        case let name where name.contains("3 personen"): return false
+        case let name where name.contains("4 personen"): return false
+        case let name where name.contains("5 personen"): return false
+        case let name where name.contains("6 personen"): return false
+        case let name where name.contains("2 adults"): return false
+        case let name where name.contains("3 adults"): return false
+        case let name where name.contains("4 adults"): return false
+        case let name where name.contains("5 adults"): return false
+        case let name where name.contains("6 adults"): return false
+        case let name where name.contains("deutschland-ticket"): return false
         default: return false
         }
     }
