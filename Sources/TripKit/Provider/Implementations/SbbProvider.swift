@@ -456,7 +456,7 @@ public class SbbProvider: AbstractNetworkProvider {
                 let secondClass = wagonJson["trainElement", "passengerClass"].string == "SECOND"
                 var attributes: [WagonAttributes] = []
                 for attributeStr in wagonJson["trainElement", "attributes"].arrayValue {
-                    let attribute: WagonAttributes.`Type`?
+                    let attribute: WagonAttributes.AttributeType?
                     switch attributeStr.stringValue {
                     case "AbteilKinderwagen": attribute = .cabinInfant
                     case "NiederflurEinstieg": attribute = .boardingAid

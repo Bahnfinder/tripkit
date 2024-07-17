@@ -166,7 +166,7 @@ public class DbProvider: AbstractHafasClientInterfaceProvider {
                 
                 var attributes: [WagonAttributes] = []
                 for attributeJson in wagonJson["ausstattungsmerkmale"].arrayValue {
-                    let type: WagonAttributes.`Type`
+                    let type: WagonAttributes.AttributeType
                     switch attributeJson["art"].stringValue {
                     case "BISTRO":                  type = .bistro
                     case "AIR_CONDITION":           type = .airCondition

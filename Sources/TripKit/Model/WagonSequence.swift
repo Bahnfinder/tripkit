@@ -86,15 +86,15 @@ public class StationTrackSector {
 }
 
 public class WagonAttributes {
-    public let attribute: WagonAttributes.`Type`
+    public let attribute: WagonAttributes.AttributeType
     public let state: WagonAttributes.State
     
-    init(attribute: WagonAttributes.`Type`, state: WagonAttributes.State) {
+    init(attribute: WagonAttributes.AttributeType, state: WagonAttributes.State) {
         self.attribute = attribute
         self.state = state
     }
     
-    public enum `Type` {
+    public enum AttributeType {
         case bistro, airCondition, bikeSpace, wheelchairSpace, toiletWheelchair, boardingAid, cabinInfant, zoneQuiet, zoneFamily, seatsSeverelyDisabled, seatsBahnComfort
     }
     
