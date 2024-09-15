@@ -13,5 +13,8 @@ public enum NetworkId: String {
     SBB, SEARCHCH, ZVV, BVB,
     
     // Italy
-    STA
+    STA,
+    
+    //Fallback
+    NONE
 }
