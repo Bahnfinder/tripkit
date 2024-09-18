@@ -3,7 +3,7 @@ import Foundation
 /// Verkehrsverbund Berlin-Brandenburg (DE)
 public class VbbProvider: AbstractHafasClientInterfaceProvider {
     
-    static let API_BASE = "https://vbb.demo.hafas.de/fahrinfo/restproxy/latest"
+    static let API_BASE = "https://fahrinfo.vbb.de/bin/"
     static let PRODUCTS_MAP: [Product?] = [.suburbanTrain, .subway, .tram, .bus, .ferry, .highSpeedTrain, .regionalTrain, .onDemand, nil, nil]
 
     public override var supportedLanguages: Set<String> { ["de", "en"] }
