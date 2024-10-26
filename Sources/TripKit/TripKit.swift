@@ -15,7 +15,7 @@ public class TripKit {
     }
     
     public func updateFormats(for locale: Locale = .current) {
-        hhmmFormatter.timeStyle = .short
+        hhmmFormatter.timeStyle = .medium
         hhmmFormatter.locale = locale
         
         let ddmmhhmmFormatString: String
@@ -60,10 +60,7 @@ public class TripKit {
 public var gregorianCalendar = Calendar(identifier: .gregorian)
 
 public func string(from timeInterval: TimeInterval) -> String {
-    return String(format: "%0.2d:%0.2d:%0.2d",
-                  Int(timeInterval / 60 / 60),
-                  Int((timeInterval / 60).truncatingRemainder(dividingBy: 60)),
-                  Int(timeInterval.truncatingRemainder(dividingBy: 60)))
+    return String(format: "%0.2d:%0.2d", Int(timeInterval / 60 / 60), Int((timeInterval / 60).truncatingRemainder(dividingBy: 60)))
 }
 
 extension String {
