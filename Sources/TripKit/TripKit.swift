@@ -15,7 +15,7 @@ public class TripKit {
     }
     
     public func updateFormats(for locale: Locale = .current) {
-        hhmmFormatter.timeStyle = .medium
+        hhmmFormatter.timeStyle = .short
         hhmmFormatter.locale = locale
         
         let ddmmhhmmFormatString: String
