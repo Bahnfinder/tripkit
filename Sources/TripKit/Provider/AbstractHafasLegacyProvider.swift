@@ -1170,10 +1170,14 @@ public class AbstractHafasLegacyProvider: AbstractHafasProvider, QueryJourneyDet
         if value == 0xffff {
             return 0
         }
-        let hours = value / 100
-        let minutes = value % 100
+        let hours = value / 10000
+        let minutes = (value / 100) % 100
+        let seconds = value % 100
         if minutes < 0 || minutes > 60 {
             throw ParseError(reason: "minutes out of range \(minutes)")
+        }
+        if seconds < 0 || seconds > 60 {
+            throw ParseError(reason: "seconds out of range \(seconds)")
         }
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
@@ -1182,6 +1186,7 @@ public class AbstractHafasLegacyProvider: AbstractHafasProvider, QueryJourneyDet
         result = calendar.date(byAdding: .day, value: dayOffset, to: result)!
         result = calendar.date(byAdding: .hour, value: hours, to: result)!
         result = calendar.date(byAdding: .minute, value: minutes, to: result)!
+        result = calendar.date(byAdding: .second, value: seconds, to: result)!
         
         return result.timeIntervalSince1970
     }
