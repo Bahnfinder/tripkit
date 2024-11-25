@@ -1127,6 +1127,10 @@ public class AbstractHafasClientInterfaceProvider: AbstractHafasProvider {
                         break
                     case "jw": // NordWestBahn-Servicetelefon
                         break
+                    case "rn": // 00 (ZVV)
+                        break
+                    case "sj", "jy": // line id "ch:1:sjyid:100648:plan:a94d61b4-27f9-46e0-83ad-b2abefc94f18"
+                        break
                     case "journeynumber", "pname": // line number
                         break
                     case _ where (rem.code ?? "").lowercased().hasPrefix("text.occup"): // load factor
@@ -1257,7 +1261,12 @@ public class AbstractHafasClientInterfaceProvider: AbstractHafasProvider {
         let path: [LocationPoint]
         if let coords = jny["poly", "crdEncYX"].string, let polyline = try? decodePolyline(from: coords) {
             path = polyline
-        } else if let polyX = jny["polyG", "polyXL", 0].int, let polyline = try? decodePolyline(from: encodedPolyList?[safe: polyX]) {
+        } else if let poly = jny["polyG", "polyXL"].array {
+            var polyline: [LocationPoint] = []
+            for polyX in poly {
+                guard let polyX = polyX.int, let decoded = try? decodePolyline(from: encodedPolyList?[safe: polyX]) else { continue }
+                polyline.append(contentsOf: decoded)
+            }
             path = polyline
         } else {
             path = []
