@@ -21,6 +21,7 @@ public class MvvProvider: AbstractEfaWebProvider {
             "SS2": LineStyle(shape: .circle, backgroundColor: LineStyle.parseColor("#76b82a"), foregroundColor: LineStyle.white),
             "SS3": LineStyle(shape: .circle, backgroundColor: LineStyle.parseColor("#951b81"), foregroundColor: LineStyle.white),
             "SS4": LineStyle(shape: .circle, backgroundColor: LineStyle.parseColor("#e30613"), foregroundColor: LineStyle.white),
+            "SS5": LineStyle(shape: .circle, backgroundColor: LineStyle.parseColor("#005e82"), foregroundColor: LineStyle.white),
             "SS6": LineStyle(shape: .circle, backgroundColor: LineStyle.parseColor("#00975f"), foregroundColor: LineStyle.white),
             "SS7": LineStyle(shape: .circle, backgroundColor: LineStyle.parseColor("#943126"), foregroundColor: LineStyle.white),
             "SS8": LineStyle(shape: .circle, backgroundColor: LineStyle.black, foregroundColor: LineStyle.parseColor("#ffcc00"), borderColor: LineStyle.gray),
