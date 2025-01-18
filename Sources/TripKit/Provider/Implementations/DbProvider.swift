@@ -240,7 +240,7 @@ public class DbProvider: AbstractNetworkProvider {
         let lidString = json["locationId"].string
         guard let lid = parseLid(from: lidString) else { return nil }
         // always use long id...
-        // let id = lid.type == .station ? json["evaNr"].string ?? lid.id : lidString
+        let shortId = lid.type == .station ? json["evaNr"].string ?? lid.id : lidString
         let coord: LocationPoint?
         let jsonPos = json["coordinates"].exists() ? json["coordinates"] : json["position"]
         if jsonPos.exists(), let lat = jsonPos["latitude"].double, let lon = jsonPos["longitude"].double {
@@ -249,17 +249,18 @@ public class DbProvider: AbstractNetworkProvider {
             coord = nil
         }
         
-        return parse(locationType: lid.type, id: lidString, coord: coord, name: json["name"].string, products: parseProducts(from: json["products"]))
+        return parse(locationType: lid.type, id: lidString, shortId: shortId, coord: coord, name: json["name"].string, products: parseProducts(from: json["products"]))
     }
     
-    private func parse(locationType: LocationType, id: String?, coord: LocationPoint?, name: String?, products: [Product]?) -> Location? {
-        let placeAndName = locationType == .station ? split(stationName: name) : split(address: name)
+    private func parse(locationType: LocationType, id: String?, shortId: String?, coord: LocationPoint?, name: String?, products: [Product]?) -> Location? {
+        // For addresses and Swiss locations (ids starting wiht 85), the place and name are reversed
+        let placeAndName = locationType == .station && (shortId?.hasPrefix("85") ?? false == false) ? split(stationName: name) : split(address: name)
         return Location(type: locationType, id: id, coord: coord, place: placeAndName?.place, name: placeAndName?.name, products: products)
     }
     
     private func parse(direction json: JSON) -> Location? {
         guard let direction = json["richtung"].string else { return nil }
-        return parse(locationType: .station, id: nil, coord: nil, name: direction, products: nil)
+        return Location(anyName: direction)
     }
     
     private func parse(locationList json: JSON) -> [Location] {
@@ -321,7 +322,7 @@ public class DbProvider: AbstractNetworkProvider {
             shortName = s.replacingOccurrences(of: "^[A-Za-z]+ ", with: "", options: [.regularExpression])
         }
         let attr = parse(attributes: json)
-        return Line(id: json["zuglaufId"].string, network: nil, product: product, label: shortName?.replacingOccurrences(of: " ", with: ""), name: name, style: lineStyle(network: nil, product: product, label: name), attr: attr, message: nil)
+        return Line(id: json["zuglaufId"].string, network: nil, product: product, label: shortName?.replacingOccurrences(of: " ", with: ""), name: name, number: nil, vehicleNumber: json["verkehrsmittelNummer"].string, style: lineStyle(network: nil, product: product, label: name), attr: attr, message: nil)
     }
     
     private func parseCancelled(stop json: JSON) -> Bool {
@@ -489,6 +490,7 @@ public class DbProvider: AbstractNetworkProvider {
     
     private func parse(wagonSequenceContext json: JSON) -> DbWagonSequenceContext? {
         let wagonSequenceContext: DbWagonSequenceContext?
+        guard json["wagenreihung"].boolValue else { return nil }
         if let lineLabel = json["risZuglaufId"].string, let departureId = json["risAbfahrtId"].string {
             wagonSequenceContext = DbWagonSequenceContext(lineLabel: lineLabel, departureId: departureId)
         } else {
@@ -564,7 +566,8 @@ public class DbProvider: AbstractNetworkProvider {
                 result.append(SuggestedLocation(location: location, priority: jsonLocation["weight"].int ?? -i))
             }
         }
-        result.sort(by: {$0.priority > $1.priority})
+        // Don't sort by priority to keep same order as in DB Navigator
+        //result.sort(by: {$0.priority > $1.priority})
         
         completion(request, .success(locations: result))
     }
@@ -896,7 +899,7 @@ public class DbProvider: AbstractNetworkProvider {
             return AsyncRequest(task: nil)
         }
         
-        let path = "zuglaeufe/\(context.lineLabel)/halte/by-abfahrt/\(formatLid(stationId: context.departureId))/wagenreihung"
+        let path = "zuglaeufe/\(context.lineLabel)/halte/by-abfahrt/\(context.departureId)/wagenreihung"
         let httpRequest = createHttpRequest(for: path, contentType: "application/x.db.vendo.mob.wagenreihung.v3+json", content: nil)
         return makeRequest(httpRequest) {
             try self.queryWagonSequenceParsing(request: httpRequest, context: context, completion: completion)
@@ -1017,7 +1020,7 @@ public class DbProvider: AbstractNetworkProvider {
     }
     
     public enum TrainType {
-        case ICE1, ICE2, ICE3, ICE3BR406, ICE3BR407, ICE3NEOBR408, ICET, ICET_5, ICE4, ICE4_7, ICE4_XXL, IC2BOMBARDIER, IC2STADLER, ICE3EUROPE, ICE3PRIDE, ICE4GERMANY, ICE4HANDBALL, ICE4FOOTBALL
+        case ICE1, ICE2, ICE3, ICE3BR406, ICE3BR407, ICE3NEOBR408, ICET, ICET_5, ICE4, ICE4_7, ICE4_XXL, IC2BOMBARDIER, IC2STADLER, ICE3EUROPE, ICE3NEOEUROPE, ICE3PRIDE, ICE4GERMANY, ICE4HANDBALL, ICE4FOOTBALL
         
         public static func parse(from vehicleNumber: String) -> TrainType? {
             if vehicleNumber.hasPrefix("ICE0304") {
@@ -1025,6 +1028,9 @@ public class DbProvider: AbstractNetworkProvider {
             }
             if vehicleNumber.hasPrefix("ICE4601") {
                 return .ICE3EUROPE
+            }
+            if vehicleNumber.hasPrefix("ICE8029") {
+                return .ICE3NEOEUROPE
             }
             if vehicleNumber.hasPrefix("ICE9457") {
                 return .ICE4GERMANY
