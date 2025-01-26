@@ -946,8 +946,8 @@ public class AbstractHafasClientInterfaceProvider: AbstractHafasProvider {
     func jsonTime(from date: Date) -> String {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
-        let components = calendar.dateComponents([.hour, .minute], from: date)
-        return String(format: "%02d%02d00", components.hour!, components.minute!)
+        let components = calendar.dateComponents([.hour, .minute, .second], from: date)
+        return String(format: "%02d%02d%02d", components.hour!, components.minute!, components.second!)
     }
     
     func jsonLocation(from location: Location) -> [String: Any] {

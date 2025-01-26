@@ -15,12 +15,13 @@ func parseIsoDate(from dateString: String, dateComponents: inout DateComponents)
     }
 }
 
-let P_ISO_TIME = try! NSRegularExpression(pattern: "(\\d{2})-?(\\d{2})")
+let P_ISO_TIME = try! NSRegularExpression(pattern: "(\\d{2})-?(\\d{2})-?(\\d{2})")
 
 func parseIsoTime(from timeString: String, dateComponents: inout DateComponents) {
     if let match = timeString.match(pattern: P_ISO_TIME) {
         dateComponents.hour = Int(match[0] ?? "")
         dateComponents.minute = Int(match[1] ?? "")
+        dateComponents.second = Int(match[2] ?? "")
     }
 }
 
