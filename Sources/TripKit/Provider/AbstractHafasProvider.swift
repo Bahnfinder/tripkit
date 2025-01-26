@@ -181,9 +181,9 @@ public class AbstractHafasProvider: AbstractNetworkProvider {
     func dateTimeParameters(builder: UrlBuilder, date: Date, dateParamName: String, timeParamName: String) {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
-        let components = calendar.dateComponents([.day, .month, .year, .hour, .minute, .second], from: date)
+        let components = calendar.dateComponents([.day, .month, .year, .hour, .minute], from: date)
         builder.addParameter(key: dateParamName, value: String(format: "%02d.%02d.%02d", components.day!, components.month!, components.year! - 2000))
-        builder.addParameter(key: timeParamName, value: String(format: "%02d:%02d:%02d", components.hour!, components.minute!, components.second!))
+        builder.addParameter(key: timeParamName, value: String(format: "%02d:%02d", components.hour!, components.minute!))
     }
     
     func locationId(location: Location) -> String {

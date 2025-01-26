@@ -1065,7 +1065,7 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
         let date = xml["itdDate"]
         let time = xml["itdTime"]
         
-        guard let yearStr = date.element?.attribute(by: "year")?.text, let year = Int(yearStr), let monthStr = date.element?.attribute(by: "month")?.text, let month = Int(monthStr), let dayStr = date.element?.attribute(by: "day")?.text, let day = Int(dayStr), let hourStr = time.element?.attribute(by: "hour")?.text, let hour = Int(hourStr), let minuteStr = time.element?.attribute(by: "minute")?.text, let minute = Int(minuteStr), let secondStr = time.element?.attribute(by: "second")?.text, let second = Int(secondStr) else {
+        guard let yearStr = date.element?.attribute(by: "year")?.text, let year = Int(yearStr), let monthStr = date.element?.attribute(by: "month")?.text, let month = Int(monthStr), let dayStr = date.element?.attribute(by: "day")?.text, let day = Int(dayStr), let hourStr = time.element?.attribute(by: "hour")?.text, let hour = Int(hourStr), let minuteStr = time.element?.attribute(by: "minute")?.text, let minute = Int(minuteStr) else {
             return nil
         }
         var dateComponents = DateComponents()
@@ -1075,16 +1075,15 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
         dateComponents.day = day
         dateComponents.hour = hour
         dateComponents.minute = minute
-        dateComponents.second = second
         return NSCalendar(calendarIdentifier: .gregorian)?.date(from: dateComponents)
     }
     
     func processItdDateTime(xml: XMLIndexer) -> Date? {
         let date = xml["itdDate"].element
         let time = xml["itdTime"].element
-        guard let year = Int(date?.attribute(by: "year")?.text ?? ""), let month = Int(date?.attribute(by: "month")?.text ?? ""), let day = Int(date?.attribute(by: "day")?.text ?? ""), let hour = Int(time?.attribute(by: "hour")?.text ?? ""), let minute = Int(time?.attribute(by: "minute")?.text ?? ""), let second = Int(time?.attribute(by: "second")?.text ?? "") else { return nil }
-
-        if year == 0 || day == -1 || hour == -1 || minute == -1 || second == -1 {
+        guard let year = Int(date?.attribute(by: "year")?.text ?? ""), let month = Int(date?.attribute(by: "month")?.text ?? ""), let day = Int(date?.attribute(by: "day")?.text ?? ""), let hour = Int(time?.attribute(by: "hour")?.text ?? ""), let minute = Int(time?.attribute(by: "minute")?.text ?? "") else { return nil }
+        
+        if year == 0 || day == -1 || hour == -1 || minute == -1 {
             return nil
         }
         //        let second = Int(time?.attribute(by: "second")?.text ?? "") ?? 0
@@ -1095,7 +1094,7 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
         dateComponents.day = day
         dateComponents.hour = hour
         dateComponents.minute = minute
-        dateComponents.second = second
+        //        dateComponents.second = second
         dateComponents.timeZone = timeZone
         return NSCalendar(calendarIdentifier: .gregorian)?.date(from: dateComponents)
     }
