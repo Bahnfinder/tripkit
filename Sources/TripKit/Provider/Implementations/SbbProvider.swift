@@ -510,7 +510,9 @@ public class SbbProvider: AbstractNetworkProvider {
                 }
             }
             
-            wagonGroups.append(WagonGroup(designation: "", wagons: wagons, destination: wagonGroupJson["direction"].string, lineLabel: nil))
+            if wagons.count > 0 {
+                wagonGroups.append(WagonGroup(designation: "", wagons: wagons, destination: wagonGroupJson["direction"].string, lineLabel: nil))
+            }
         }
         guard !sectors.isEmpty, !wagonGroups.compactMap({$0.wagons}).isEmpty else {
             throw ParseError(reason: "failed to parse sectors or wagon groups")
@@ -867,12 +869,11 @@ public class SbbProvider: AbstractNetworkProvider {
         }
         
         var legs: [Leg] = []
-        for legJson in tripJson["legs"].arrayValue {
-            let legId = legJson["id"].stringValue
+        for (legId, legJson) in tripJson["legs"].arrayValue.enumerated() {
             let legType = legJson["__typename"].stringValue
             switch legType {
             case "PTRideLeg":
-                legs.append(try parsePublicLeg(legJson: legJson["serviceJourney"], legId: legId, tripId: id, occupancyClass: occupancyClass))
+                legs.append(try parsePublicLeg(legJson: legJson["serviceJourney"], legId: "\(legId)", tripId: id, occupancyClass: occupancyClass))
             case "ChangeLeg":
                 break
             case "AccessLeg", "PTConnectionLeg":
@@ -1412,7 +1413,7 @@ public class SbbProvider: AbstractNetworkProvider {
             """
             
     private let QueryJourneyDetailQuery = """
-            query getServiceJourneyById($id: ID!, $language: LanguageEnum!) {
+            query getServiceJourneyById($id: NonEmptyString!, $language: LanguageEnum!) {
               serviceJourneyById(id: $id, language: $language) {
                 id
                 stopPoints {
