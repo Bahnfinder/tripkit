@@ -851,7 +851,7 @@ public class AbstractHafasClientInterfaceProvider: AbstractHafasProvider {
         }
         // Workaround end
         
-        let addTime: TimeInterval = !legs.isEmpty ? max(0, -departureTime.timeIntervalSince(legs.last!.maxTime)) : 0
+        let addTime: TimeInterval = !legs.isEmpty ? max(0, -departureTime.timeIntervalSince(legs.last!.arrivalTime)) : 0
         if let lastLeg = legs.last as? IndividualLeg, lastLeg.type == type {
             legs.removeLast()
             path.insert(contentsOf: lastLeg.path, at: 0)
@@ -1144,6 +1144,8 @@ public class AbstractHafasClientInterfaceProvider: AbstractHafasProvider {
                         break
                     case "ao": // no alcoholic drinks allowed
                         break
+                    case "weather":
+                        break
                     default:
                         guard let txt = rem.txtN?.stripHTMLTags() else { continue }
                         switch rem.type ?? "" {
@@ -1164,6 +1166,8 @@ public class AbstractHafasClientInterfaceProvider: AbstractHafasProvider {
                                 result.insert(.wheelChairAccess)
                             case "wlan verfügbar":
                                 result.insert(.wifiAvailable)
+                            case _ where txt.lowercased().hasPrefix("zugnummer: "):
+                                break
                             default:
                                 legMessages.append(txt)
                             }

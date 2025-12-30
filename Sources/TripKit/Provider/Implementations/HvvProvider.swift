@@ -7,7 +7,7 @@ public class HvvProvider: AbstractNetworkProvider {
     
     /// Documentation: https://gti.geofox.de/html/GTIHandbuch_p.html
     static let API_BASE = "https://gti.geofox.de/gti/public/"
-    static let VERSION = 55
+    static let VERSION = 63
     let authHeaders: [String: Any]
     
     public override var supportedLanguages: Set<String> { ["de", "en"] }
@@ -364,7 +364,8 @@ public class HvvProvider: AbstractNetworkProvider {
                 "tariffRegions": false,
                 "kinds": [1, 2]  // Einzelfahrkarte Erwachsener & Kind
             ] as [String : Any],
-            "withPaths": true
+            "withPaths": true,
+            "useBikeAndRide": false
         ]
         if let via = via {
             requestDict["via"] = jsonLocation(location: via)
@@ -466,7 +467,7 @@ public class HvvProvider: AbstractNetworkProvider {
         default:            type = .any
         }
         let id = json["id"].string
-        let name = json["name"].string
+        let name = json["name"].string ?? json["combinedName"].string
         let place = json["city"].string
         let coord: LocationPoint?
         if let x = json["coordinate"]["x"].double, let y = json["coordinate"]["y"].double {
@@ -474,7 +475,7 @@ public class HvvProvider: AbstractNetworkProvider {
         } else {
             coord = nil
         }
-        return Location(type: type, id: id, coord: coord, place: place, name: name)
+        return Location(type: type == .any && id != nil ? .station : type, id: id, coord: coord, place: place, name: name)
     }
     
     private func jsonLocation(location: Location) -> [String: Any] {
@@ -610,7 +611,7 @@ public class HvvProvider: AbstractNetworkProvider {
         case "FOOTPATH":
             // Individual leg
             return IndividualLeg(type: .walk, departureTime: departure.time, departure: departure.location, arrival: arrival.location, arrivalTime: arrival.time, distance: 0, path: path)
-        case "BICYCLE":
+        case "BICYCLE", "ACTIVITY_BIKE_AND_RIDE":
             return IndividualLeg(type: .bike, departureTime: departure.time, departure: departure.location, arrival: arrival.location, arrivalTime: arrival.time, distance: 0, path: path)
         case "CHANGE", "CHANGE_SAME_PLATFORM":
             if departure.time == arrival.time {
