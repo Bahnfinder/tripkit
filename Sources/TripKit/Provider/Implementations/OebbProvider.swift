@@ -1,6 +1,6 @@
 import Foundation
 
-/// ÖBB Personalverkehr AG (AT)
+/// ÖBB Personenverkehr AG (AT)
 public class OebbProvider: AbstractHafasClientInterfaceProvider {
     
     static let API_BASE = "https://fahrplan.oebb.at/bin/"
@@ -8,20 +8,20 @@ public class OebbProvider: AbstractHafasClientInterfaceProvider {
     
     public override var supportedLanguages: Set<String> { ["de"] }
     
-    private lazy var dateFormatterDate: DateFormatter = {
+    private var dateFormatterDate: DateFormatter {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         dateFormatter.timeZone = timeZone
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
         return dateFormatter
-    }()
-    private lazy var dateFormatterTime: DateFormatter = {
+    }
+    private var dateFormatterTime: DateFormatter {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "HH:mm"
         dateFormatter.timeZone = timeZone
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
         return dateFormatter
-    }()
+    }
     
     public init(apiAuthorization: [String: Any]) {
         super.init(networkId: .OEBB, apiBase: OebbProvider.API_BASE, productsMap: OebbProvider.PRODUCTS_MAP)
@@ -30,6 +30,7 @@ public class OebbProvider: AbstractHafasClientInterfaceProvider {
         apiClient = ["id": "OEBB", "type": "IPH", "name": "oebbADHOC", "v": "6020300"]
         styles = [
             "WESTbahn Management GmbH|I": LineStyle(shape: .rect, backgroundColor: LineStyle.white, foregroundColor: LineStyle.parseColor("#0077b5"), borderColor: LineStyle.parseColor("#0077b5")),
+            "CAT - CityAirportTrain|R": LineStyle(shape: .rect, backgroundColor: LineStyle.parseColor("#7bbc36"), foregroundColor: LineStyle.white, borderColor: 0),
         ]
     }
     

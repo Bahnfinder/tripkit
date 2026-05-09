@@ -153,25 +153,20 @@ public class AbstractNetworkProvider: NetworkProvider {
                     return style
                 }
                 
-                style = styles["\(network)|\(product.rawValue)"]
-                if let style = style {
-                    return style
-                }
-                
                 if product == .bus, let label = label, label.hasPrefix("N") {
                     style = styles["\(network)|BN"]
                     if let style = style {
                         return style
                     }
                 }
+                
+                style = styles["\(network)|\(product.rawValue)"]
+                if let style = style {
+                    return style
+                }
             }
             
             style = styles[product.rawValue + (label ?? "")]
-            if let style = style {
-                return style
-            }
-            
-            style = styles[product.rawValue]
             if let style = style {
                 return style
             }
@@ -181,6 +176,11 @@ public class AbstractNetworkProvider: NetworkProvider {
                 if let style = style {
                     return style
                 }
+            }
+            
+            style = styles[product.rawValue]
+            if let style = style {
+                return style
             }
         }
         
