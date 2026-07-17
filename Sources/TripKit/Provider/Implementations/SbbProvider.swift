@@ -878,18 +878,29 @@ public class SbbProvider: AbstractNetworkProvider {
             let legType = legJson["__typename"].stringValue
             switch legType {
             case "PTRideLeg":
-                legs.append(try parsePublicLeg(legJson: legJson["serviceJourney"], legId: "\(legId)", tripId: id, occupancyClass: occupancyClass))
+                let publicLeg = try parsePublicLeg(legJson: legJson["serviceJourney"], legId: "\(legId)", tripId: id, occupancyClass: occupancyClass)
+                // Workaround for when AccessLeg does not contain any coordinates
+                if legs.count > 0, let previousLeg = legs[legs.count - 1] as? IndividualLeg, previousLeg.arrival.coord == nil {
+                    legs.removeLast()
+                    legs.append(IndividualLeg(type: previousLeg.type, departureTime: previousLeg.departureTime, departure: previousLeg.departure, arrival: publicLeg.departure, arrivalTime: previousLeg.arrivalTime, distance: previousLeg.distance, path: previousLeg.path))
+                }
+                legs.append(publicLeg)
             case "ChangeLeg":
                 break
             case "AccessLeg", "PTConnectionLeg":
                 var from = gql_parsePlace(json: legJson["start"])
                 var to = gql_parsePlace(json: legJson["end"])
                 
+                // Workaround for when AccessLeg does not contain any coordinates
                 if legType == "AccessLeg" {
                     if legId == 0 {
                         from = fromLocation
-                    } else if legId == jsonLegs.count - 1 {
+                    }
+                    if legId == jsonLegs.count - 1 {
                         to = toLocation
+                    }
+                    if from?.coord == nil && legs.count > 0 {
+                        from = legs[legs.count - 1].arrival
                     }
                 }
                 
