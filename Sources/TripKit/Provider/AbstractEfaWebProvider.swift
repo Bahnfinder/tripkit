@@ -156,7 +156,8 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
         
         let httpRequest = HttpRequest(urlBuilder: urlBuilder)
         return makeRequest(httpRequest) {
-            try self.queryJourneyDetailParsing(request: httpRequest, context: context, completion: completion)
+            let (trip, leg) = try self.parseJourneyDetail(request: httpRequest, context: context)
+            self.applyStopBlockingInfos(request: httpRequest, trip: trip, leg: leg, completion: completion)
         } errorHandler: { err in
             completion(httpRequest, .failure(err))
         }
@@ -600,6 +601,11 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
     }
     
     override func queryJourneyDetailParsing(request: HttpRequest, context: QueryJourneyDetailContext, completion: @escaping (HttpRequest, QueryJourneyDetailResult) -> Void) throws {
+        let (trip, leg) = try parseJourneyDetail(request: request, context: context)
+        completion(request, .success(trip: trip, leg: leg))
+    }
+
+    func parseJourneyDetail(request: HttpRequest, context: QueryJourneyDetailContext) throws -> (Trip, PublicLeg) {
         guard let data = request.responseData, let line = (context as? EfaJourneyContext)?.line else { throw ParseError(reason: "no response") }
         let xml = XMLHash.parse(data)
         let response = xml["itdRequest"]["itdStopSeqCoordRequest"]["stopSeq"]
@@ -607,12 +613,12 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
         for point in response["itdPoint"].all {
             guard let stopLocation = processItdPointAttributes(point: point) else { continue }
             let stopPosition = parsePosition(position: point.element?.attribute(by: "platformName")?.text)
-            
+
             let plannedStopArrivalTime = processItdDateTime(xml: point["itdDateTime"][0])
             let predictedStopArrivalTime = processItdDateTime(xml: point["itdDateTimeTarget"][0])
             let plannedStopDepartureTime = processItdDateTime(xml: point["itdDateTime"][1])
             let predictedStopDepartureTime = processItdDateTime(xml: point["itdDateTimeTarget"][1])
-            
+
             let departure: StopEvent?
             if let plannedStopDepartureTime = plannedStopDepartureTime {
                 departure = StopEvent(location: stopLocation, plannedTime: plannedStopDepartureTime, predictedTime: predictedStopDepartureTime, plannedPlatform: stopPosition, predictedPlatform: nil, cancelled: false)
@@ -625,9 +631,9 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
             } else {
                 arrival = nil
             }
-            
+
             let stop = Stop(location: stopLocation, departure: departure, arrival: arrival, message: nil)
-            
+
             stops.append(stop)
         }
         guard stops.count >= 2 else {
@@ -642,7 +648,155 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
         let path = processItdPathCoordinates(xml["itdRequest"]["itdStopSeqCoordRequest"]["itdPathCoordinates"]) ?? []
         let leg = PublicLeg(line: line, destination: arrivalStop.location, departure: departureStop, arrival: arrivalStop, intermediateStops: stops, message: nil, path: path, journeyContext: nil, wagonSequenceContext: nil, loadFactor: nil)
         let trip = Trip(id: "", from: departureStop.location, to: arrivalStop.location, legs: [leg], duration: 0, fares: [])
-        completion(request, .success(trip: trip, leg: leg))
+        return (trip, leg)
+    }
+
+    func applyStopBlockingInfos(request: HttpRequest, trip: Trip, leg: PublicLeg, completion: @escaping (HttpRequest, QueryJourneyDetailResult) -> Void) {
+        let stopIds = ([leg.departure.id, leg.arrival.id] + leg.intermediateStops.map { $0.location.id })
+            .compactMap { normalize(stationId: $0) }
+            .uniqued()
+        guard !stopIds.isEmpty else {
+            completion(request, .success(trip: trip, leg: leg))
+            return
+        }
+
+        let group = DispatchGroup()
+        let lockQueue = DispatchQueue(label: "TripKit.EfaStopBlocking")
+        var blockedStopIds = Set<String>()
+
+        for stopId in stopIds {
+            group.enter()
+            queryStopBlockingInfo(stopId: stopId, line: leg.line) { blocked in
+                if blocked {
+                    lockQueue.sync {
+                        _ = blockedStopIds.insert(stopId)
+                    }
+                }
+                group.leave()
+            }
+        }
+
+        group.notify(queue: DispatchQueue.global()) {
+            self.applyBlockedStopIds(blockedStopIds, to: leg)
+            completion(request, .success(trip: trip, leg: leg))
+        }
+    }
+
+    func queryStopBlockingInfo(stopId: String, line: Line, completion: @escaping (Bool) -> Void) {
+        let urlBuilder = UrlBuilder(path: stopFinderEndpoint, encoding: requestUrlEncoding)
+        appendCommonRequestParameters(builder: urlBuilder, outputFormat: "JSON")
+        urlBuilder.addParameter(key: "locationServerActive", value: 1)
+        urlBuilder.addParameter(key: "type_sf", value: "stop")
+        urlBuilder.addParameter(key: "name_sf", value: stopId)
+        urlBuilder.addParameter(key: "itOptionsActive", value: 1)
+
+        let request = HttpRequest(urlBuilder: urlBuilder)
+        _ = HttpClient.get(httpRequest: request) { result in
+            switch result {
+            case .success((_, let data)):
+                do {
+                    let json = try JSON(data: data)
+                    completion(self.stopFinderResponseHasStopBlocking(json: json, line: line))
+                } catch {
+                    completion(false)
+                }
+            case .failure:
+                completion(false)
+            }
+        }
+    }
+
+    func applyBlockedStopIds(_ blockedStopIds: Set<String>, to leg: PublicLeg) {
+        guard !blockedStopIds.isEmpty else { return }
+
+        if let departureId = normalize(stationId: leg.departure.id), blockedStopIds.contains(departureId) {
+            leg.departureStop.cancelled = true
+        }
+        if let arrivalId = normalize(stationId: leg.arrival.id), blockedStopIds.contains(arrivalId) {
+            leg.arrivalStop.cancelled = true
+        }
+        for stop in leg.intermediateStops {
+            guard let stopId = normalize(stationId: stop.location.id), blockedStopIds.contains(stopId) else { continue }
+            stop.arrival?.cancelled = true
+            stop.departure?.cancelled = true
+        }
+    }
+
+    func stopFinderResponseHasStopBlocking(json: JSON, line: Line) -> Bool {
+        let root = json["stopFinder"].exists() ? json["stopFinder"] : json
+        for point in jsonElements(root["points"]["point"]) {
+            for info in jsonElements(point["infos"]["info"]) {
+                guard stopFinderInfoType(info) == "stopBlocking" else { continue }
+                let message = flattenJsonStrings(info).joined(separator: " ")
+                if stopBlockingMessage(message, mentions: line) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    func stopFinderInfoType(_ info: JSON) -> String? {
+        for param in jsonElements(info["paramList"]["param"]) {
+            guard param["name"].string == "infoType" else { continue }
+            return param["value"].string
+        }
+        return nil
+    }
+
+    func stopBlockingMessage(_ message: String, mentions line: Line) -> Bool {
+        let candidates = [line.label, line.number, line.name]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            .filter { !$0.isEmpty }
+            .uniqued()
+        guard !candidates.isEmpty else { return false }
+
+        let messageTokens = message
+            .lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+        let messageTokenSet = Set(messageTokens)
+        let compactMessage = messageTokens.joined()
+
+        for candidate in candidates {
+            let candidateTokens = candidate
+                .components(separatedBy: CharacterSet.alphanumerics.inverted)
+                .filter { !$0.isEmpty }
+            guard !candidateTokens.isEmpty else { continue }
+
+            if candidateTokens.count == 1 && messageTokenSet.contains(candidateTokens[0]) {
+                return true
+            }
+            let compactCandidate = candidateTokens.joined()
+            if messageTokenSet.contains(compactCandidate) || compactMessage.contains(compactCandidate) {
+                return true
+            }
+        }
+        return false
+    }
+
+    func jsonElements(_ json: JSON) -> [JSON] {
+        switch json.type {
+        case .array:
+            return json.arrayValue
+        case .dictionary:
+            return [json]
+        default:
+            return []
+        }
+    }
+
+    func flattenJsonStrings(_ json: JSON) -> [String] {
+        switch json.type {
+        case .string:
+            return [json.stringValue.stripHTMLTags()]
+        case .array:
+            return json.arrayValue.flatMap { flattenJsonStrings($0) }
+        case .dictionary:
+            return json.dictionaryValue.values.flatMap { flattenJsonStrings($0) }
+        default:
+            return []
+        }
     }
     
     // MARK: Response parse methods
