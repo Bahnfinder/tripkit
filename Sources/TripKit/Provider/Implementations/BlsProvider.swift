@@ -572,8 +572,8 @@ public class BlsProvider: AbstractOjpProvider {
         }
     }
 
-    /// Maps a BLS formation service code (`Angebot`) to a ``WagonAttributes/Type``.
-    private func mapWagonAttribute(_ code: String) -> WagonAttributes.`Type`? {
+    /// Maps a BLS formation service code (`Angebot`) to a ``WagonAttributes/AttributeType``.
+    private func mapWagonAttribute(_ code: String) -> WagonAttributes.AttributeType? {
         switch code {
         case "BHP": return .wheelchairSpace     // Wheelchair spaces
         case "FZ": return .zoneFamily           // Family zone
