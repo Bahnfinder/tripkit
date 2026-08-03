@@ -543,7 +543,7 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
             context = previousContext as? Context
         }
         
-        completion(request, .success(context: context, from: fromIdentified, via: viaIdentified, to: toIdentified, trips: trips, messages: messages))
+        applyStopBlockingInfos(request: request, context: context, from: fromIdentified, via: viaIdentified, to: toIdentified, trips: trips, messages: messages, completion: completion)
     }
     
     override func queryDeparturesParsing(request: HttpRequest, stationId: String, departures: Bool, time: Date?, maxDepartures: Int, equivs: Bool, completion: @escaping (HttpRequest, QueryDeparturesResult) -> Void) throws {
@@ -652,11 +652,37 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
     }
 
     func applyStopBlockingInfos(request: HttpRequest, trip: Trip, leg: PublicLeg, completion: @escaping (HttpRequest, QueryJourneyDetailResult) -> Void) {
+        applyStopBlockingInfos(to: leg) {
+            completion(request, .success(trip: trip, leg: leg))
+        }
+    }
+
+    func applyStopBlockingInfos(request: HttpRequest, context: QueryTripsContext?, from: Location?, via: Location?, to: Location?, trips: [Trip], messages: [InfoText], completion: @escaping (HttpRequest, QueryTripsResult) -> Void) {
+        let publicLegs = trips.flatMap { $0.legs }.compactMap { $0 as? PublicLeg }
+        guard !publicLegs.isEmpty else {
+            completion(request, .success(context: context, from: from, via: via, to: to, trips: trips, messages: messages))
+            return
+        }
+
+        let group = DispatchGroup()
+        for leg in publicLegs {
+            group.enter()
+            applyStopBlockingInfos(to: leg) {
+                group.leave()
+            }
+        }
+
+        group.notify(queue: DispatchQueue.global()) {
+            completion(request, .success(context: context, from: from, via: via, to: to, trips: trips, messages: messages))
+        }
+    }
+
+    func applyStopBlockingInfos(to leg: PublicLeg, completion: @escaping () -> Void) {
         let stopIds = ([leg.departure.id, leg.arrival.id] + leg.intermediateStops.map { $0.location.id })
             .compactMap { normalize(stationId: $0) }
             .uniqued()
         guard !stopIds.isEmpty else {
-            completion(request, .success(trip: trip, leg: leg))
+            completion()
             return
         }
 
@@ -678,7 +704,7 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
 
         group.notify(queue: DispatchQueue.global()) {
             self.applyBlockedStopIds(blockedStopIds, to: leg)
-            completion(request, .success(trip: trip, leg: leg))
+            completion()
         }
     }
 
