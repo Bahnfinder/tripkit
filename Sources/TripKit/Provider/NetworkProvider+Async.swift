@@ -128,6 +128,22 @@ public extension NetworkProvider {
             }
         }
     }
+
+    /**
+    Refreshes an already queried line journey with realtime details, if supported by the provider.
+
+     - Parameter context: context that was used to get the journey detail.
+     - Parameter trip: previously queried trip.
+     - Parameter leg: previously queried public leg.
+     - Returns: A reference to a cancellable http request.
+     */
+    func refreshJourneyDetailRealtime(context: QueryJourneyDetailContext, trip: Trip, leg: PublicLeg) async -> (HttpRequest, QueryJourneyDetailResult) {
+        return await withCheckedContinuation { continuation in
+            refreshJourneyDetailRealtime(context: context, trip: trip, leg: leg) { request, result in
+                continuation.resume(with: .success((request, result)))
+            }
+        }
+    }
     
     /**
     Get the wagon sequence of a train.

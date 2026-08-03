@@ -130,6 +130,18 @@ public protocol NetworkProvider {
      - Returns: A reference to a cancellable http request.
      */
     @discardableResult func queryJourneyDetail(context: QueryJourneyDetailContext, completion: @escaping (HttpRequest, QueryJourneyDetailResult) -> Void) -> AsyncRequest
+
+    /**
+    Refreshes an already queried line journey with realtime details, if supported by the provider.
+
+     - Parameter context: context that was used to get the journey detail.
+     - Parameter trip: previously queried trip.
+     - Parameter leg: previously queried public leg.
+     - Parameter completion: object containing the refreshed journey detail, or the original journey if no provider-specific refresh is available.
+
+     - Returns: A reference to a cancellable http request.
+     */
+    @discardableResult func refreshJourneyDetailRealtime(context: QueryJourneyDetailContext, trip: Trip, leg: PublicLeg, completion: @escaping (HttpRequest, QueryJourneyDetailResult) -> Void) -> AsyncRequest
     
     /**
     Get the wagon sequence of a train.

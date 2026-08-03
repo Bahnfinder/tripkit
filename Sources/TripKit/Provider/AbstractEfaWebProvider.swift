@@ -155,13 +155,22 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
         urlBuilder.addParameter(key: "tStOTType", value: "all")
         
         let httpRequest = HttpRequest(urlBuilder: urlBuilder)
-        let asyncRequest = AsyncRequest(task: nil)
-        asyncRequest.task = makeRequest(httpRequest) {
+        return makeRequest(httpRequest) {
             let (trip, leg) = try self.parseJourneyDetail(request: httpRequest, context: context)
-            self.enrichJourneyDetailRealtimeIfNeeded(request: httpRequest, trip: trip, leg: leg, context: context, asyncRequest: asyncRequest, completion: completion)
+            self.applyStopBlockingInfos(request: httpRequest, trip: trip, leg: leg, completion: completion)
         } errorHandler: { err in
             completion(httpRequest, .failure(err))
-        }.task
+        }
+    }
+
+    public override func refreshJourneyDetailRealtime(context: QueryJourneyDetailContext, trip: Trip, leg: PublicLeg, completion: @escaping (HttpRequest, QueryJourneyDetailResult) -> Void) -> AsyncRequest {
+        guard let context = context as? EfaJourneyContext else {
+            completion(HttpRequest(urlBuilder: UrlBuilder()), .invalidId)
+            return AsyncRequest(task: nil)
+        }
+
+        let asyncRequest = AsyncRequest(task: nil)
+        enrichJourneyDetailRealtimeIfNeeded(request: HttpRequest(urlBuilder: UrlBuilder()), trip: trip, leg: leg, context: context, asyncRequest: asyncRequest, completion: completion)
         return asyncRequest
     }
     

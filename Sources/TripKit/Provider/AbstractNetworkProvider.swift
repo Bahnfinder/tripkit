@@ -76,6 +76,11 @@ public class AbstractNetworkProvider: NetworkProvider {
     public func queryJourneyDetail(context: QueryJourneyDetailContext, completion: @escaping (HttpRequest, QueryJourneyDetailResult) -> Void) -> AsyncRequest {
         fatalError("\(#function) not implemented")
     }
+
+    public func refreshJourneyDetailRealtime(context: QueryJourneyDetailContext, trip: Trip, leg: PublicLeg, completion: @escaping (HttpRequest, QueryJourneyDetailResult) -> Void) -> AsyncRequest {
+        completion(HttpRequest(urlBuilder: UrlBuilder()), .success(trip: trip, leg: leg))
+        return AsyncRequest(task: nil)
+    }
     
     public func queryWagonSequence(context: QueryWagonSequenceContext, completion: @escaping (HttpRequest, QueryWagonSequenceResult) -> Void) -> AsyncRequest {
         return AsyncRequest(task: nil)
