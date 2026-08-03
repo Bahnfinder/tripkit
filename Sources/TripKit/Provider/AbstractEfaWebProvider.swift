@@ -155,12 +155,14 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
         urlBuilder.addParameter(key: "tStOTType", value: "all")
         
         let httpRequest = HttpRequest(urlBuilder: urlBuilder)
-        return makeRequest(httpRequest) {
+        let asyncRequest = AsyncRequest(task: nil)
+        asyncRequest.task = makeRequest(httpRequest) {
             let (trip, leg) = try self.parseJourneyDetail(request: httpRequest, context: context)
-            self.applyStopBlockingInfos(request: httpRequest, trip: trip, leg: leg, completion: completion)
+            self.enrichJourneyDetailRealtimeIfNeeded(request: httpRequest, trip: trip, leg: leg, context: context, asyncRequest: asyncRequest, completion: completion)
         } errorHandler: { err in
             completion(httpRequest, .failure(err))
-        }
+        }.task
+        return asyncRequest
     }
     
     // MARK: NetworkProvider responses
@@ -649,6 +651,75 @@ public class AbstractEfaWebProvider: AbstractEfaProvider {
         let leg = PublicLeg(line: line, destination: arrivalStop.location, departure: departureStop, arrival: arrivalStop, intermediateStops: stops, message: nil, path: path, journeyContext: nil, wagonSequenceContext: nil, loadFactor: nil)
         let trip = Trip(id: "", from: departureStop.location, to: arrivalStop.location, legs: [leg], duration: 0, fares: [])
         return (trip, leg)
+    }
+
+    func enrichJourneyDetailRealtimeIfNeeded(request: HttpRequest, trip: Trip, leg: PublicLeg, context: EfaJourneyContext, asyncRequest: AsyncRequest, completion: @escaping (HttpRequest, QueryJourneyDetailResult) -> Void) {
+        guard !hasRealtime(leg: leg) else {
+            applyStopBlockingInfos(request: request, trip: trip, leg: leg, completion: completion)
+            return
+        }
+
+        let via = leg.intermediateStops[safe: leg.intermediateStops.count / 2]?.location
+        let tripOptions = TripOptions(products: leg.line.product.map { [$0] } ?? Product.allCases, optimize: .leastWalking, maxChanges: 0, maxFootpathDist: 1)
+        asyncRequest.task = queryTrips(from: leg.departure, via: via, to: leg.arrival, date: leg.plannedDepartureTime, departure: true, tripOptions: tripOptions) { _, result in
+            guard case .success(_, _, _, _, let trips, _) = result,
+                  let matchedTrip = self.matchingRealtimeTrip(for: leg, in: trips),
+                  let matchedLeg = matchedTrip.legs.compactMap({ $0 as? PublicLeg }).first else {
+                self.applyStopBlockingInfos(request: request, trip: trip, leg: leg, completion: completion)
+                return
+            }
+
+            let enrichedLeg = PublicLeg(
+                line: matchedLeg.line,
+                destination: matchedLeg.destination ?? leg.destination,
+                departure: matchedLeg.departureStop,
+                arrival: matchedLeg.arrivalStop,
+                intermediateStops: matchedLeg.intermediateStops,
+                message: matchedLeg.message ?? leg.message,
+                path: matchedLeg.path.isEmpty ? leg.path : matchedLeg.path,
+                journeyContext: context,
+                wagonSequenceContext: matchedLeg.wagonSequenceContext ?? leg.wagonSequenceContext,
+                loadFactor: matchedLeg.loadFactor ?? leg.loadFactor
+            )
+            let enrichedTrip = Trip(id: matchedTrip.id, from: enrichedLeg.departure, to: enrichedLeg.arrival, legs: [enrichedLeg], duration: matchedTrip.duration, fares: matchedTrip.fares, refreshContext: matchedTrip.refreshContext)
+            self.applyStopBlockingInfos(request: request, trip: enrichedTrip, leg: enrichedLeg, completion: completion)
+        }.task
+    }
+
+    func hasRealtime(leg: PublicLeg) -> Bool {
+        leg.departureStop.predictedTime != nil ||
+        leg.departureStop.predictedPlatform != nil ||
+        leg.arrivalStop.predictedTime != nil ||
+        leg.arrivalStop.predictedPlatform != nil ||
+        leg.intermediateStops.contains {
+            $0.arrival?.predictedTime != nil ||
+            $0.arrival?.predictedPlatform != nil ||
+            $0.departure?.predictedTime != nil ||
+            $0.departure?.predictedPlatform != nil
+        }
+    }
+
+    func matchingRealtimeTrip(for leg: PublicLeg, in trips: [Trip]) -> Trip? {
+        trips.first { trip in
+            let publicLegs = trip.legs.compactMap { $0 as? PublicLeg }
+            guard publicLegs.count == 1, let candidate = publicLegs.first else { return false }
+            guard hasRealtime(leg: candidate) else { return false }
+            guard sameLine(candidate.line, leg.line) else { return false }
+            guard normalize(stationId: candidate.departure.id) == normalize(stationId: leg.departure.id) else { return false }
+            guard normalize(stationId: candidate.arrival.id) == normalize(stationId: leg.arrival.id) else { return false }
+            return abs(candidate.plannedDepartureTime.timeIntervalSince(leg.plannedDepartureTime)) <= 60 &&
+                abs(candidate.plannedArrivalTime.timeIntervalSince(leg.plannedArrivalTime)) <= 300
+        }
+    }
+
+    func sameLine(_ a: Line, _ b: Line) -> Bool {
+        if let aId = a.id, let bId = b.id, aId == bId {
+            return true
+        }
+        if let aNetwork = a.network, let bNetwork = b.network, aNetwork != bNetwork {
+            return false
+        }
+        return a.product == b.product && a.label == b.label
     }
 
     func applyStopBlockingInfos(request: HttpRequest, trip: Trip, leg: PublicLeg, completion: @escaping (HttpRequest, QueryJourneyDetailResult) -> Void) {
