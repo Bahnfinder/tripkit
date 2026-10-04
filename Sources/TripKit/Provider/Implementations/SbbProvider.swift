@@ -11,6 +11,7 @@ public class SbbProvider: AbstractNetworkProvider {
     /// This implementation however does not build anymore on the blog post, so certificate loading is no longer necessary.
     static let API_BASE = "https://active.vnext.app.sbb.ch/"
     static let GRAPH_QL = "https://graphql.www.sbb.ch/"
+    static let GRAPH_QL_HEADERS = ["apollographql-client-name": "sbb-webshop-home", "apollographql-client-version": "18.2.2"]
     static let USER_AGENT = "SBBmobile/12.21.2.71.master Android/14 (Google;Pixel 6)"
     
     public override var supportedLanguages: Set<String> { ["de", "en", "fr", "it"] }
@@ -228,7 +229,7 @@ public class SbbProvider: AbstractNetworkProvider {
                 "language": queryLanguage?.uppercased() ?? defaultLanguage.uppercased()
             ]
         ], requestUrlEncoding: .utf8)
-        let httpRequest = HttpRequest(urlBuilder: urlBuilder).setHeaders(["Apollographql-Client-Name": "sbb-webshop-3.15.0"]).setPostPayload(payload)
+        let httpRequest = HttpRequest(urlBuilder: urlBuilder).setHeaders(SbbProvider.GRAPH_QL_HEADERS).setPostPayload(payload)
         return makeRequest(httpRequest) {
             try self.queryJourneyDetailParsing(request: httpRequest, context: context, completion: completion)
         } errorHandler: { err in
@@ -247,7 +248,7 @@ public class SbbProvider: AbstractNetworkProvider {
     public override func queryTrips(from: Location, via: Location?, to: Location, date: Date, departure: Bool, tripOptions: TripOptions, completion: @escaping (HttpRequest, QueryTripsResult) -> Void) -> AsyncRequest {
         let urlBuilder = UrlBuilder(path: SbbProvider.GRAPH_QL, encoding: .utf8)
         let payload = encodeJson(dict: getGQLQueryTripsParameters(from: from, via: via, to: to, date: date, departure: departure, tripOptions: tripOptions, pagingCursor: nil), requestUrlEncoding: .utf8)
-        let httpRequest = HttpRequest(urlBuilder: urlBuilder).setHeaders(["Apollographql-Client-Name": "sbb-webshop-3.15.0"]).setPostPayload(payload)
+        let httpRequest = HttpRequest(urlBuilder: urlBuilder).setHeaders(SbbProvider.GRAPH_QL_HEADERS).setPostPayload(payload)
         return makeRequest(httpRequest) {
             try self.queryTripsParsing(request: httpRequest, from: from, via: via, to: to, date: date, departure: departure, tripOptions: tripOptions, previousContext: nil, later: false, completion: completion)
         } errorHandler: { err in
@@ -403,7 +404,7 @@ public class SbbProvider: AbstractNetworkProvider {
         }
         let urlBuilder = UrlBuilder(path: SbbProvider.GRAPH_QL, encoding: .utf8)
         let payload = encodeJson(dict: getGQLQueryTripsParameters(from: context.from, via: context.via, to: context.to, date: context.date, departure: context.departure, tripOptions: context.tripOptions, pagingCursor: later ? context.laterContext : context.earlierContext), requestUrlEncoding: .utf8)
-        let httpRequest = HttpRequest(urlBuilder: urlBuilder).setHeaders(["Apollographql-Client-Name": "sbb-webshop-3.15.0"]).setPostPayload(payload)
+        let httpRequest = HttpRequest(urlBuilder: urlBuilder).setHeaders(SbbProvider.GRAPH_QL_HEADERS).setPostPayload(payload)
         return makeRequest(httpRequest) {
             try self.queryTripsParsing(request: httpRequest, from: context.from, via: context.via, to: context.to, date: context.date, departure: context.departure, tripOptions: context.tripOptions, previousContext: context, later: later, completion: completion)
         } errorHandler: { err in
@@ -425,7 +426,7 @@ public class SbbProvider: AbstractNetworkProvider {
                 "language": queryLanguage?.uppercased() ?? defaultLanguage.uppercased()
             ]
         ], requestUrlEncoding: .utf8)
-        let httpRequest = HttpRequest(urlBuilder: urlBuilder).setHeaders(["Apollographql-Client-Name": "sbb-webshop-3.15.0"]).setPostPayload(payload)
+        let httpRequest = HttpRequest(urlBuilder: urlBuilder).setHeaders(SbbProvider.GRAPH_QL_HEADERS).setPostPayload(payload)
         return makeRequest(httpRequest) {
             try self.refreshTripParsing(request: httpRequest, context: context, completion: completion)
         } errorHandler: { err in
