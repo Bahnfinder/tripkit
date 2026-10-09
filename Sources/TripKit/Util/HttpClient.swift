@@ -8,13 +8,29 @@ public class HttpClient: NSObject {
     private static var shared = HttpClient()
     private static let DefaultUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/602.4.8 (KHTML, like Gecko) Version/10.0.3 Safari/602.4.8"
     
-    private lazy var urlSession: URLSession = {
+    /// Hosts that reject Apple's TLS 1.3 client fingerprint (HTTP 452 OPS_BLOCKED) but accept TLS 1.2. DB Fix
+    private static let tls12OnlyHosts: Set<String> = ["app.services-bahn.de"]
+
+    private lazy var urlSession: URLSession = makeUrlSession(limitToTLS12: false)
+    private lazy var tls12UrlSession: URLSession = makeUrlSession(limitToTLS12: true)
+
+    private func makeUrlSession(limitToTLS12: Bool) -> URLSession {
         let config = URLSessionConfiguration.default
         if #available(iOS 11.0, tvOS 11.0, watchOS 4.0, macOS 10.13, *) {
             config.waitsForConnectivity = true
         }
+        if limitToTLS12 {
+            config.tlsMaximumSupportedProtocolVersion = .TLSv12
+        }
         return URLSession(configuration: config, delegate: self, delegateQueue: nil)
-    }()
+    }
+
+    private func session(for url: URL) -> URLSession {
+        if let host = url.host, HttpClient.tls12OnlyHosts.contains(host) {
+            return tls12UrlSession
+        }
+        return urlSession
+    }
     private var clientIdentityCache: [String: SecIdentity] = [:]
     private var clientRootCache: [String: SecCertificate] = [:]
     
@@ -43,7 +59,7 @@ public class HttpClient: NSObject {
         } else {
             os_log("making http request to %{public}@", log: .requestLogger, type: .default, url.absoluteString)
         }
-        let task = shared.urlSession.dataTask(with: urlRequest) { result in
+        let task = shared.session(for: url).dataTask(with: urlRequest) { result in
             completion(result)
         }
         task.resume()
