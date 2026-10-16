@@ -8,8 +8,12 @@ public class HttpClient: NSObject {
     private static var shared = HttpClient()
     private static let DefaultUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/602.4.8 (KHTML, like Gecko) Version/10.0.3 Safari/602.4.8"
     
-    /// Hosts that reject Apple's TLS 1.3 client fingerprint (HTTP 452 OPS_BLOCKED) but accept TLS 1.2. DB Fix
-    private static let tls12OnlyHosts: Set<String> = ["app.services-bahn.de"]
+    /// Akamai (e.g. app.services-bahn.de) answers HTTP 452 OPS_BLOCKED depending on the TLS client fingerprint,
+    /// and which TLS version gets blocked changes over time. On a 452 the request is retried once with the other
+    /// TLS version, and the version that worked is remembered per host. DB Fix
+    private static let blockedStatusCode = 452
+    private var tls12PreferredHosts: Set<String> = []
+    private let tls12PreferredHostsLock = NSLock()
 
     private lazy var urlSession: URLSession = makeUrlSession(limitToTLS12: false)
     private lazy var tls12UrlSession: URLSession = makeUrlSession(limitToTLS12: true)
@@ -25,11 +29,22 @@ public class HttpClient: NSObject {
         return URLSession(configuration: config, delegate: self, delegateQueue: nil)
     }
 
-    private func session(for url: URL) -> URLSession {
-        if let host = url.host, HttpClient.tls12OnlyHosts.contains(host) {
-            return tls12UrlSession
+    private func prefersTLS12(host: String?) -> Bool {
+        guard let host = host else { return false }
+        tls12PreferredHostsLock.lock()
+        defer { tls12PreferredHostsLock.unlock() }
+        return tls12PreferredHosts.contains(host)
+    }
+
+    private func setPrefersTLS12(_ prefersTLS12: Bool, host: String?) {
+        guard let host = host else { return }
+        tls12PreferredHostsLock.lock()
+        defer { tls12PreferredHostsLock.unlock() }
+        if prefersTLS12 {
+            tls12PreferredHosts.insert(host)
+        } else {
+            tls12PreferredHosts.remove(host)
         }
-        return urlSession
     }
     private var clientIdentityCache: [String: SecIdentity] = [:]
     private var clientRootCache: [String: SecCertificate] = [:]
@@ -59,12 +74,33 @@ public class HttpClient: NSObject {
         } else {
             os_log("making http request to %{public}@", log: .requestLogger, type: .default, url.absoluteString)
         }
-        let task = shared.session(for: url).dataTask(with: urlRequest) { result in
-            completion(result)
+        let host = url.host
+        let useTLS12 = shared.prefersTLS12(host: host)
+        let asyncRequest = AsyncRequest(task: nil)
+        let task = shared.session(limitToTLS12: useTLS12).dataTask(with: urlRequest) { result in
+            guard case .failure(.invalidStatusCode(blockedStatusCode, _)) = result else {
+                completion(result)
+                return
+            }
+            // Request was blocked, retry once with the other TLS version
+            os_log("request to %{public}@ blocked (TLS 1.2 only: %{public}@), retrying with other TLS version", log: .requestLogger, type: .default, url.absoluteString, String(describing: useTLS12))
+            let retryTask = shared.session(limitToTLS12: !useTLS12).dataTask(with: urlRequest) { retryResult in
+                if case .success = retryResult {
+                    shared.setPrefersTLS12(!useTLS12, host: host)
+                }
+                completion(retryResult)
+            }
+            asyncRequest.task = retryTask
+            retryTask.resume()
         }
+        asyncRequest.task = task
         task.resume()
-        
-        return AsyncRequest(task: task)
+
+        return asyncRequest
+    }
+
+    private func session(limitToTLS12: Bool) -> URLSession {
+        return limitToTLS12 ? tls12UrlSession : urlSession
     }
     
     public static func getJson(httpRequest: HttpRequest, completion: @escaping (Result<JSON, HttpError>) -> Void) -> AsyncRequest {
